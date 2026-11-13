@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Claude Code 桌面版 (Microsoft Store) 简体中文汉化 —— asar 布局适配版
+"""Claude 桌面客户端 Windows 版 (官网安装器 / 微软商店, MSIX 包) 简体中文汉化 —— asar 布局适配版
 
 本脚本是 pvq125800/claude-code-zh-cn (MIT License) 的 fork 增强版。
 
-适配 2026-11 起商店版 (5.11492.x+) 的新布局: 界面资源打包为 ion-dist.asar
+适配 2026-11 起桌面客户端 (5.11492.x+, 官网与商店渠道相同) 的新布局: 界面资源打包为 ion-dist.asar
 单文件 (原 install.py 依赖 ion-dist/ 解包目录, 在新布局上会安全退出),
 且 claude.exe 内嵌 asar 完整性哈希 (SHA256 of header JSON), 需同步替换。
 
@@ -570,7 +570,7 @@ def main():
     os.makedirs(WORK_DIR, exist_ok=True)
     pkg = find_package(args.dir)
     if not pkg:
-        log("[错误] 未找到 Claude (Microsoft Store 版)")
+        log("[错误] 未找到 Claude 桌面客户端 (官网 Setup.exe 或 Microsoft Store 安装的 MSIX 包)")
         return 1
     if args.check:
         return do_check(pkg)

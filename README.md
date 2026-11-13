@@ -1,8 +1,10 @@
-# Claude 桌面版（Microsoft Store）中文汉化
+# Claude 桌面客户端 Windows 版 中文汉化（官网安装器 / 微软商店）
 
-**汉化对象：从微软商店（Microsoft Store）安装的 Claude 桌面客户端** —— 即商店里那个名为 **"Claude"** 的桌面应用（包名 `Claude_pzs8sxrjxfjjc`，内含 Cowork / Claude Code 界面，所以上游也叫它 Claude Code 桌面版）。双击一次就好，Claude 每次自动更新后重跑一次。
+**汉化对象：Claude 桌面客户端 Windows 版** —— 以 MSIX 包格式安装（包名 `Claude_pzs8sxrjxfjjc`，位于 `C:\Program Files\WindowsApps`，内含 Cowork / Claude Code 界面，所以上游也叫它 Claude Code 桌面版）。双击一次就好，Claude 每次自动更新后重跑一次。
 
-> **实测版本：Claude 5.11492.2.0（Windows 11 x64，2026-11）**。Claude 自动更新到新版本后汉化会被覆盖，重跑一次 `install.bat` 即可。
+> **两种安装渠道装出来的是同一个包，都适用**：① 官网 [claude.ai/download](https://claude.ai/download) 的 `Claude Setup.exe`；② 微软商店（Microsoft Store）搜 "Claude"。
+
+> **实测版本：Claude 5.11492.2.0（Windows 11 x64，2026-11，官网 `Claude Setup.exe` 安装）**。Claude 自动更新到新版本后汉化会被覆盖，重跑一次 `install.bat` 即可。
 
 > ⚠️ 非官方汉化。只写入本地界面翻译文件与三处语言开关，不修改核心逻辑、不替换任何 JS 标识符。
 
@@ -10,17 +12,16 @@
 
 | 形态 | 是否适用 |
 |------|------|
-| **微软商店版 Claude 桌面客户端**（包名 `Claude_pzs8sxrjxfjjc`，5.11492.x+ 的 `ion-dist.asar` 布局） | ✅ **本 fork 的目标**，走 `install_asar.py` |
-| 旧版商店桌面客户端（`ion-dist/` 解包目录布局） | ✅ 走上游原版 `install.py` |
+| **Claude 桌面客户端 Windows 版**（MSIX 包 `Claude_pzs8sxrjxfjjc`，官网 `Setup.exe` 或微软商店安装均可；5.11492.x+ 的 `ion-dist.asar` 布局） | ✅ **本 fork 的目标**，走 `install_asar.py` |
+| 旧版桌面客户端（`ion-dist/` 解包目录布局） | ✅ 走上游原版 `install.py` |
 | Claude Code 命令行工具（CLI / npm 安装的 `claude`） | ❌ 那是终端程序，不是本仓库的对象 |
 | claude.ai 网页版 | ❌ 无需汉化，网页版设置里已可选简体中文 |
-| 官网独立安装版（非商店渠道） | ⚠️ 未测试；布局如不同，`install.bat --check` 会给出诊断 |
 
-不确定自己装的是哪种？`install.bat --check` 会自动定位商店版并报告布局与状态。
+不确定自己的安装形态？`install.bat --check` 会自动定位 Claude 桌面客户端并报告布局与状态。
 
 ## 本 fork 的新增：ion-dist.asar 单文件布局兼容
 
-上游 [pvq125800/claude-code-zh-cn](https://github.com/pvq125800/claude-code-zh-cn) 的 `install.py` 依赖 `app/resources/ion-dist/` 解包目录。**2026-11 起的商店版（5.11492.x+）把整个 ion-dist 打成了单文件 `ion-dist.asar`，原脚本会报"读不到官方翻译底稿"安全退出。**
+上游 [pvq125800/claude-code-zh-cn](https://github.com/pvq125800/claude-code-zh-cn) 的 `install.py` 依赖 `app/resources/ion-dist/` 解包目录。**2026-11 起的桌面客户端版本（5.11492.x+，官网与商店渠道相同）把整个 ion-dist 打成了单文件 `ion-dist.asar`，原脚本会报"读不到官方翻译底稿"安全退出。**
 
 本 fork 新增 `install_asar.py`，`install.bat` 会自动检测安装布局并选择脚本：
 
@@ -53,7 +54,7 @@
 
 ## 快速使用
 
-**前置条件**：Windows 10/11、[Python 3](https://www.python.org/downloads/)（安装时勾选 Add to PATH）、从 Microsoft Store 安装的 Claude。
+**前置条件**：Windows 10/11、[Python 3](https://www.python.org/downloads/)（安装时勾选 Add to PATH）、已安装 Claude 桌面客户端（官网 `Claude Setup.exe` 或微软商店装的都可以，同一个 MSIX 包）。
 
 1. 下载本仓库（Code → Download ZIP，或 `git clone`）
 2. 双击 **`install.bat`**（会自动请求管理员权限，自动识别新旧布局）
@@ -78,9 +79,9 @@ install.bat --build   # 只构建新 asar 到 staging，不安装
 
 ## 常见问题
 
-- **提示未找到 Claude**：确认装的是 Microsoft Store 版；或手动指定 `install.bat --dir "C:\Program Files\WindowsApps\Claude_x.x.x.x_x64__pzs8sxrjxfjjc"`。
+- **提示未找到 Claude**：确认桌面客户端已安装（官网 `Setup.exe` 或微软商店均可）；或手动指定 `install.bat --dir "C:\Program Files\WindowsApps\Claude_x.x.x.x_x64__pzs8sxrjxfjjc"`。
 - **Claude 自动更新后变回英文**：正常，更新会覆盖汉化文件，重跑 `install.bat` 即可。
-- **Store 更新报"包已损坏 / 修复失败"**：先 `install.bat --uninstall`（会把属主与 exe 哈希还原），更新完再重装汉化。
+- **Claude 更新报"包已损坏 / 修复失败"**：先 `install.bat --uninstall`（会把属主与 exe 哈希还原），更新完再重装汉化。
 - **安装后 Claude 启动失败**：说明 exe 哈希与 asar 不匹配（例如手动替换过文件），跑 `install.bat --uninstall` 还原备份即可恢复英文原版。
 
 ## 贡献翻译
