@@ -1,8 +1,22 @@
-# Claude Code 桌面版 中文汉化
+# Claude 桌面版（Microsoft Store）中文汉化
 
-把 Microsoft Store 版 Claude Code 桌面版（Cowork / Code 界面）汉化为简体中文。双击一次就好，Claude 每次自动更新后重跑一次。
+**汉化对象：从微软商店（Microsoft Store）安装的 Claude 桌面客户端** —— 即商店里那个名为 **"Claude"** 的桌面应用（包名 `Claude_pzs8sxrjxfjjc`，内含 Cowork / Claude Code 界面，所以上游也叫它 Claude Code 桌面版）。双击一次就好，Claude 每次自动更新后重跑一次。
+
+> **实测版本：Claude 5.11492.2.0（Windows 11 x64，2026-11）**。Claude 自动更新到新版本后汉化会被覆盖，重跑一次 `install.bat` 即可。
 
 > ⚠️ 非官方汉化。只写入本地界面翻译文件与三处语言开关，不修改核心逻辑、不替换任何 JS 标识符。
+
+## 适用范围
+
+| 形态 | 是否适用 |
+|------|------|
+| **微软商店版 Claude 桌面客户端**（包名 `Claude_pzs8sxrjxfjjc`，5.11492.x+ 的 `ion-dist.asar` 布局） | ✅ **本 fork 的目标**，走 `install_asar.py` |
+| 旧版商店桌面客户端（`ion-dist/` 解包目录布局） | ✅ 走上游原版 `install.py` |
+| Claude Code 命令行工具（CLI / npm 安装的 `claude`） | ❌ 那是终端程序，不是本仓库的对象 |
+| claude.ai 网页版 | ❌ 无需汉化，网页版设置里已可选简体中文 |
+| 官网独立安装版（非商店渠道） | ⚠️ 未测试；布局如不同，`install.bat --check` 会给出诊断 |
+
+不确定自己装的是哪种？`install.bat --check` 会自动定位商店版并报告布局与状态。
 
 ## 本 fork 的新增：ion-dist.asar 单文件布局兼容
 
