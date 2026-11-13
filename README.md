@@ -4,26 +4,48 @@
 
 > ⚠️ 非官方汉化。只写入本地界面翻译文件与三处语言开关，不修改核心逻辑、不替换任何 JS 标识符。
 
+## 本 fork 的新增：ion-dist.asar 单文件布局兼容
+
+上游 [pvq125800/claude-code-zh-cn](https://github.com/pvq125800/claude-code-zh-cn) 的 `install.py` 依赖 `app/resources/ion-dist/` 解包目录。**2026-11 起的商店版（5.11492.x+）把整个 ion-dist 打成了单文件 `ion-dist.asar`，原脚本会报"读不到官方翻译底稿"安全退出。**
+
+本 fork 新增 `install_asar.py`，`install.bat` 会自动检测安装布局并选择脚本：
+
+| 安装目录布局 | 适用版本 | 脚本 | 原理 |
+|------|------|------|------|
+| `ion-dist/` 解包目录 | 旧版 | `install.py`（上游原版，未改动） | 直接部署翻译 JSON + JS 补丁 |
+| `ion-dist.asar` 单文件 | 5.11492.x+ | `install_asar.py`（本 fork 新增） | 重打包 asar + 同步 exe 内嵌哈希 |
+
+`install_asar.py` 在上游思路之外额外做了什么：
+
+1. 解析 `ion-dist.asar`，以官方 `en-US.json` 为底稿叠加翻译包，生成 `i18n/zh-CN.json` 与 `i18n/zh-Hans.json`（含 `dynamic/` 副本——两个名字都部署，主进程与渲染进程无论解析到哪个都能命中）
+2. 对 asar 内 `assets/v1/*.js` 打三处语言开关补丁（白名单加 `zh-CN`、`zh-Hans` / 名称表 / `localeChoice` 钉住），每个文件过 `node --check`，不过即回滚
+3. 重打包 asar：未改动文件逐字节原样流式拷贝，新增/修改文件重算 4MB 分块 SHA256 integrity
+4. **替换 `claude.exe` 内嵌的 asar 头部哈希**（64 位 hex 等长原地替换）。exe 开启了 `EnableEmbeddedAsarIntegrityValidation` 熔丝，不同步这个哈希 Claude 会拒绝启动
+5. `Claude-3p/config.json` 的 `locale` / `language` 设为 `zh-Hans`（主进程自带简中 shell 翻译，`app.asar` 无需改动）
+
 ## 效果
+
+**ion-dist.asar 布局（5.11492.2.0 实测，本 fork）：**
 
 | 范围 | 覆盖 |
 |------|------|
-| 前端界面（`ion-dist/i18n`） | 31,749 / 32,243 条，**98%** |
-| Shell / 主进程文案 | 734 / 742 条，**99%** |
-| 动态文案（`i18n/dynamic`） | 49 / 49 条，**100%** |
-| Statsig 特性文案 | 65 条 |
+| 前端界面（44,218 条） | 约 **63%** 已译，其余回退英文 |
+| 动态文案 | 49 / 51 |
+| Shell / 主进程 | 内置 `zh-Hans` 全量 |
 
-剩余未译的是新版 Claude 才出现、翻译包尚未覆盖的 key，会自动回退英文，等你反馈后补齐。
+未译条目是新版 Claude 才出现、翻译包尚未覆盖的 key，自动回退英文，欢迎 PR 补齐（见下方"贡献翻译"）。
+
+**ion-dist/ 解包目录布局（旧版，上游原脚本）：** 31,749 / 32,243 条，98%。
 
 ## 快速使用
 
 **前置条件**：Windows 10/11、[Python 3](https://www.python.org/downloads/)（安装时勾选 Add to PATH）、从 Microsoft Store 安装的 Claude。
 
 1. 下载本仓库（Code → Download ZIP，或 `git clone`）
-2. 双击 **`install.bat`**（会自动请求管理员权限）
+2. 双击 **`install.bat`**（会自动请求管理员权限，自动识别新旧布局）
 3. 重启 Claude Code
 
-脚本会从 [Releases](../../releases) 自动取翻译包 `resources-zh-CN.zip`。如果你的网络连 GitHub API 不通，手动下载该 zip 放到 `install.bat` 同目录，即可完全离线安装。
+脚本会从上游 [Releases](https://github.com/pvq125800/claude-code-zh-cn/releases/latest) 自动取翻译包 `resources-zh-CN.zip`（本仓库不分发翻译文本，尊重上游的分发范围约定）。如果你的网络连 GitHub API 不通，手动下载该 zip 放到 `install.bat` 同目录，即可完全离线安装。
 
 **卸载 / 还原英文**
 
@@ -31,49 +53,34 @@
 install.bat --uninstall
 ```
 
-会按备份逐文件还原，并把 `app\resources` 的所有权交还 `TrustedInstaller`。
+会按备份逐文件还原 asar、`claude.exe` 内嵌哈希与 `config.json`，并把所有权交还 `TrustedInstaller`。
 
-## 它做了什么
+**其他模式**
 
-1. `Get-AppxPackage` 定位 Claude 安装目录（普通权限即可，不需要枚举受保护的 `WindowsApps`）
-2. 以官方 `en-US.json` 为底，叠加翻译包与补充译文，生成目标 `zh-CN.json` —— 所以 Claude 更新出新 key 也不会报错，只是那些条目回退英文
-3. 备份将被改动的文件（`%LOCALAPPDATA%\claude-code-zh-cn\backup`），写 `manifest.json` 供一键还原
-4. `takeown` + `icacls` 用 **SID**（Administrators + 当前用户）拿写入权限，不依赖默认禁用的内置 Administrator 账户
-5. 部署 6 个文件：`ion-dist/i18n/zh-CN.json`、`zh-CN.overrides.json`、`dynamic/zh-CN.json`、`statsig/zh-CN.json`，以及主进程用的 `zh-CN.json`、`zh-CN.overrides.json`
-6. 给 JS 打三处安全的字符串字面量补丁，每个改动文件先跑 `node --check`，不通过就自动回滚该文件：
-   - 语言白名单加入 `zh-CN`
-   - 语言名称表加入 `Chinese (China) / 简体中文 (中国)`
-   - `localeChoice:null` → `localeChoice:"zh-CN"`（不钉住会被系统或账号语言顶回英文）
-7. 把 `Claude-3p/config.json` 的 `locale` / `language` 设为 `zh-CN`
-
-**没有"硬编码文本替换"这一步。** 早期版本会把 JS 源码里的 `Models` / `Extensions` / `tokens` 之类标识符一并翻译，破坏 `\p{Default_Ignorable_Code_Point}`、`Script_Extensions` 正则和 GitHub URL，导致整页白屏、设置页报 `1FV71M4`、`/new` 报 `1EUWK6G`。只保留 i18n 部署 + 语言开关，界面同样全中文且不会崩。
+```bash
+install.bat --check   # 只诊断，不改动任何东西
+install.bat --build   # 只构建新 asar 到 staging，不安装
+```
 
 ## 常见问题
 
 - **提示未找到 Claude**：确认装的是 Microsoft Store 版；或手动指定 `install.bat --dir "C:\Program Files\WindowsApps\Claude_x.x.x.x_x64__pzs8sxrjxfjjc"`。
 - **Claude 自动更新后变回英文**：正常，更新会覆盖汉化文件，重跑 `install.bat` 即可。
-- **Store 更新报"包已损坏 / 修复失败"**：先 `install.bat --uninstall`（会把属主还给 `TrustedInstaller`），更新完再重装汉化。
-- **想先看不动文件地了解状况**：`install.bat --check` 只诊断，不改动任何东西。
+- **Store 更新报"包已损坏 / 修复失败"**：先 `install.bat --uninstall`（会把属主与 exe 哈希还原），更新完再重装汉化。
+- **安装后 Claude 启动失败**：说明 exe 哈希与 asar 不匹配（例如手动替换过文件），跑 `install.bat --uninstall` 还原备份即可恢复英文原版。
 
 ## 贡献翻译
 
-翻译文本随 **Release 附件** `resources-zh-CN.zip` 分发，不进仓库。zip 内 6 个文件按 key（官方 i18n 的哈希）组织：
-
-| 文件 | 说明 |
-|------|------|
-| `frontend-pack.json` / `frontend-extra.json` | 主界面；pack 为基础翻译，extra 为补充 |
-| `shell-pack.json` / `shell-extra.json` | Shell / 主进程文案 |
-| `dynamic-extra.json` | 动态下发文案 |
-| `statsig-pack.json` | Statsig 特性文案 |
-
-想补翻译：下载 zip，对照 Claude 安装目录里的 `ion-dist/i18n/en-US.json` 找出仍是英文的 key，把改好的文件发 issue 或 PR（附上 diff 就够，不用整包）。
+翻译文本随上游 **Release 附件** `resources-zh-CN.zip` 分发，不进仓库。想补翻译：下载 zip，对照 Claude 安装目录里的 `i18n/en-US.json`（asar 内）或 `ion-dist/i18n/en-US.json`（旧布局）找出仍是英文的 key，把改好的文件发到上游仓库的 issue / PR（附 diff 即可）。
 
 ## 许可与免责
 
 - 本项目采用 MIT 许可，见 [LICENSE](LICENSE)，授权范围是安装脚本本身。
+- 基于 [pvq125800/claude-code-zh-cn](https://github.com/pvq125800/claude-code-zh-cn)（MIT）修改，上游原脚本完整保留于 `install.py`。
 - 与 Anthropic 官方无关联。仓库与 Release 里都不含账号、密钥或个人路径；脚本只写本机 Claude 安装目录和你的 `AppData`。
 - 汉化文本对应 Claude 官方界面字符串，请仅在个人使用范围内自行分发。
 
 ## 致谢
 
+- [pvq125800/claude-code-zh-cn](https://github.com/pvq125800/claude-code-zh-cn) — 上游项目，`install.py` 与翻译包均出自该项目
 - [claude-desktop-zh-cn](https://github.com/xixu-me/Claude-Desktop-ZH-CN) — 基础前端翻译

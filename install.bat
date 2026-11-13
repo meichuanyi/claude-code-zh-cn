@@ -33,7 +33,20 @@ if errorlevel 1 (
 echo 以管理员权限运行
 echo.
 
-%PYTHON% "%~dp0install.py" %*
+:: 检测安装布局: 新版 (5.11492.x+) 打包为 ion-dist.asar 单文件, 旧版是 ion-dist\ 解包目录
+set "LAYOUT="
+for /f "delims=" %%i in ('powershell -NoProfile -Command "$p = Get-AppxPackage -Name '*Claude*' | Sort-Object Version -Descending | Select-Object -First 1; if ($p) { if (Test-Path (Join-Path $p.InstallLocation 'app\resources\ion-dist.asar')) { 'asar' } else { 'dir' } }"') do set "LAYOUT=%%i"
+
+if /i "%LAYOUT%"=="asar" (
+    echo 检测到 ion-dist.asar 单文件布局 (5.11492.x+), 使用 asar 适配脚本...
+    %PYTHON% "%~dp0install_asar.py" %*
+) else if /i "%LAYOUT%"=="dir" (
+    echo 检测到 ion-dist 解包目录布局, 使用原版脚本...
+    %PYTHON% "%~dp0install.py" %*
+) else (
+    echo 未检测到已安装的 Claude, 尝试原版脚本 (会给出具体提示)...
+    %PYTHON% "%~dp0install.py" %*
+)
 
 echo.
 echo 按任意键退出...
